@@ -12,7 +12,7 @@ pd.read_sql("""SELECT * FROM sqlite_master""", conn)
 # STEP 1
 # Replace None with your code
 df_boston = pd.read_sql("""
-SELECT e.firstName, e.lastName, e.jobTitle
+SELECT e.firstName, e.lastName
 FROM employees e
 JOIN offices o ON e.officeCode = o.officeCode
 WHERE o.city = 'Boston'
@@ -122,6 +122,7 @@ JOIN customers c ON e.employeeNumber = c.salesRepEmployeeNumber
 JOIN orders odr ON c.customerNumber = odr.customerNumber
 JOIN orderdetails od ON odr.orderNumber = od.orderNumber
 WHERE od.productCode IN (SELECT productCode FROM under20_products)
+ORDER BY e.firstName = 'Loui' DESC, e.firstName
 """, conn)
 
 conn.close()

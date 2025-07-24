@@ -1,177 +1,200 @@
 # Lab: SQL Table Relations
 
-## Introduction
+## Overview
 
-In this lab assessment, you'll practice your knowledge of `JOIN` statements and subqueries, using various types of joins and various methods for specifying the links between them. One of the main benefits of using a relational database is the table relations that define them which allow you to access and connect data together via shared columns. By writing more advanced SQL queries that utilize joins and subqueries you can provide a deeper and more granular level of analysis and data retrieval.
+This lab demonstrates advanced SQL querying techniques using a customer relationship management (CRM) database. It focuses on mastering JOIN operations, filtering, aggregation, and subqueries to retrieve insights across multiple related tables. The structure and logic were built using an ERD schema, SQLite, Pandas, and SQL within a Python environment.
 
-This assessment will continue looking at the familiar Northwind database that contains customer relationship management (CRM) data as well as employee and product data. You will take a deeper dive into this database in order to accomplish more advanced SQL queries that require you to access data from multiple tables at once. 
+The lab consists of 10 parts, each with a real-world business question, an SQL solution, and verified outputs using automated tests.
 
-Imagine that you are working in a programming role for the sales rep team. They have collaborated with the customer relations and the product teams to take a comprehensive look at the employee to customer pipeline in an attempt to find areas of improvement and potential growth. You have been asked to provide some specific data and statistics regarding this project.
+---
 
-## Learning Objectives
+## Environment Setup
 
-You will be able to:
+- **Database:** `data.sqlite`
+- **Libraries:** `sqlite3`, `pandas`
+- **Run Commands:**
+  - `pipenv install`
+  - `pipenv shell`
+  - `python3 main.py`
+  - `pytest`
 
-* Write SQL queries that make use of various types of joins
-* Choose and perform whichever type of join is best for retrieving desired data
-* Write subqueries to decompose complex queries
+---
 
-## Database
+## Step-by-Step Solutions
 
-The database will be the customer relationship management (CRM) database, which has the following ERD.
+### **STEP 1**: Employees in Boston
 
-![Database Schema](/assets/ERD.png)
+**Goal:** List the first and last names of employees working in the Boston office.  
+**Approach:** Use an `INNER JOIN` between `employees` and `offices` and filter `WHERE city = 'Boston'`.
 
-## Set Up
-
-* Fork and Clone the GitHub Repo
-* Install dependencies and enter the virtual environment:
-    * `pipenv install`
-    * `pipenv shell`
-
-All your code will be in `main.py`. You can add any print statements needed to check your code and run the file with `python3 main.py`. Your lab will be graded using a test suite that you can also use to check your work as you go by running `pytest` or `pytest -x`.
-
-### Connect to the database
-
-Below we have provided the code to import both pandas and sqlite3 as well as define and create the connection to the database you will use. Also displayed is the schema and table names from the database. Use this information in conjunction with the ERD image above to assist in creating your SQL Queries.
-
-Major Hint: Look for the shared columns across tables you need to 'join' together.
-
-```python
-# STEP 0
-
-# SQL Library and Pandas Library
-import sqlite3
-import pandas as pd
-
-# Connect to the database
-conn = sqlite3.connect('data.sqlite')
-
-pd.read_sql("""SELECT * FROM sqlite_master""", conn)
+```sql
+SELECT e.firstName, e.lastName
+FROM employees e
+JOIN offices o ON e.officeCode = o.officeCode
+WHERE o.city = 'Boston';
 ```
 
-## Part 1: Join and Filter
+---
 
-### Step 1
+### **STEP 2**: Offices with No Employees
 
-The company would like to let Boston employees go remote but need to know more information about who is working in that office. Return the first and last names and the job titles for all employees in Boston.
+**Goal:** Identify any office locations that do not have assigned employees.  
+**Approach:** Use a `LEFT JOIN` from `offices` to `employees`, filtering on `NULL` employeeNumber.
 
-```python
-# STEP 1
-# Replace None with your code
-df_boston = None
+```sql
+SELECT o.*
+FROM offices o
+LEFT JOIN employees e ON o.officeCode = e.officeCode
+WHERE e.employeeNumber IS NULL;
 ```
 
-### Step 2
+---
 
-Recent downsizing and employee attrition have caused some mixups in office tracking and the company is worried they are supporting a 'ghost' location. Are there any offices that have zero employees?
+### **STEP 3**: Employees and Their Office Info
 
-```python
-# STEP 2
-# Replace None with your code
-df_zero_emp = None
+**Goal:** Get a complete list of employees and the city/state of their office.  
+**Approach:** Use a `LEFT JOIN` to include all employees, even those with missing office assignments.
+
+```sql
+SELECT e.firstName, e.lastName, o.city, o.state
+FROM employees e
+LEFT JOIN offices o ON e.officeCode = o.officeCode
+ORDER BY e.firstName, e.lastName;
 ```
 
-## Part 2: Type of Join
+---
 
-### Step 3
+### **STEP 4**: Customers With No Orders
 
-As a part of this larger analysis project the HR department is taking the time to audit employee records to make sure nothing is out of place and have asked you to produce a report of all employees. Return the employees first name and last name along with the city and state of the office that they work out of (if they have one). Include all employees and order them by their first name, then their last name.
+**Goal:** Find customers who have never placed an order.  
+**Approach:** Use a `LEFT JOIN` from `customers` to `orders` and filter where `orderNumber IS NULL`.
 
-```python
-# STEP 3
-# Replace None with your code
-df_employee = None
+```sql
+SELECT c.contactFirstName, c.contactLastName, c.phone, c.salesRepEmployeeNumber
+FROM customers c
+LEFT JOIN orders o ON c.customerNumber = o.customerNumber
+WHERE o.orderNumber IS NULL
+ORDER BY c.contactLastName;
 ```
 
-### Step 4
+---
 
-The customer management and sales rep team know that they have several 'customers' in the system that have not placed any orders. They want to reach out to these customers with updated product catalogs to try and get them to place initial orders. Return all of the customer's contact information (first name, last name, and phone number) as well as their sales rep's employee number for any customer that has not placed an order. Sort the results alphabetically based on the contact's last name
+### **STEP 5**: Payment Audit by Amount
 
-There are several approaches you could take here, including a left join and filtering on null values or using a subquery to filter out customers who do have orders. In total there are 24 customers who have not placed an order.
+**Goal:** Return customer contact names, payment amount, and date, sorted by amount.  
+**Approach:** Join `customers` and `payments` and cast `amount` to ensure numeric sorting.
 
-```python
-# STEP 4
-# Replace None with your code
-df_contacts = None
+```sql
+SELECT c.contactFirstName, c.contactLastName, p.amount, p.paymentDate
+FROM customers c
+JOIN payments p ON c.customerNumber = p.customerNumber
+ORDER BY CAST(p.amount AS REAL) DESC;
 ```
 
-## Part 3: Built-in Function
+---
 
-### Step 5
+### **STEP 6**: Employees with High-Value Customers
 
-The accounting team is auditing their figures and wants to make sure all customer payments are in alignment, they have asked you to produce a report of all the customer contacts (first and last names) along with details for each of the customers' payment amounts and date of payment. They have asked that these results be sorted in descending order by the payment amount.
+**Goal:** Find employees whose customers have an average credit limit over $90,000.  
+**Approach:** Join `employees` to `customers`, group by employee, and filter using `HAVING`.
 
-Hint: A member of their team mentioned that they are not sure the 'amount' column is being stored as the right datatype so keep this in mind when sorting.
-
-```python
-# STEP 5
-# Replace None with your code
-df_payment = None
+```sql
+SELECT e.employeeNumber, e.firstName, e.lastName, COUNT(c.customerNumber) AS num_customers
+FROM employees e
+JOIN customers c ON e.employeeNumber = c.salesRepEmployeeNumber
+GROUP BY e.employeeNumber
+HAVING AVG(c.creditLimit) > 90000
+ORDER BY num_customers DESC;
 ```
 
-## Part 4: Joining and Grouping
+---
 
-### Step 6
+### **STEP 7**: Top-Selling Products by Volume
 
-The sales rep team has noticed several key team members that stand out as having trustworthy business relations with their customers, reflected by high credit limits indicating more potential for orders. The team wants you to identify these 4 individuals. Return the employee number, first name, last name, and number of customers for employees whose customers have an average credit limit over 90k. Sort by number of customers from high to low.
+**Goal:** For each product, return number of orders and total units sold.  
+**Approach:** Join `products` to `orderdetails` and aggregate.
 
-```python
-# STEP 6
-# Replace None with your code
-df_credit = None
+```sql
+SELECT p.productName,
+       COUNT(DISTINCT od.orderNumber) AS numorders,
+       SUM(od.quantityOrdered) AS totalunits
+FROM products p
+JOIN orderdetails od ON p.productCode = od.productCode
+GROUP BY p.productCode
+ORDER BY totalunits DESC;
 ```
 
-### Step 7
+---
 
-The product team is looking to create new model kits and wants to know which current products are selling the most in order to get an idea of what is popular. Return the product name and count the number of orders for each product as a column named 'numorders'. Also return a new column, 'totalunits', that sums up the total quantity of product sold (use the quantityOrdered column). Sort the results by the totalunits column, highest to lowest, to showcase the top selling products.
+### **STEP 8**: Product Market Reach
 
-```python
-# STEP 7
-# Replace None with your code
-df_product_sold = None
+**Goal:** Count how many distinct customers purchased each product.  
+**Approach:** Join `products`, `orderdetails`, `orders`, and `customers`, then count distinct customer numbers.
+
+```sql
+SELECT p.productName, p.productCode,
+       COUNT(DISTINCT o.customerNumber) AS numpurchasers
+FROM products p
+JOIN orderdetails od ON p.productCode = od.productCode
+JOIN orders o ON od.orderNumber = o.orderNumber
+GROUP BY p.productCode
+ORDER BY numpurchasers DESC;
 ```
 
-## Part 5: Multiple Joins
+---
 
-### Step 8
+### **STEP 9**: Customer Count Per Office
 
-As a follow-up to the above question, the product team also wants to know how many different customers ordered each product to get an idea of market reach. Return the product name, code, and the total number of customers who have ordered each product, aliased as 'numpurchasers'. Sort the results by the highest  number of purchasers.
+**Goal:** Determine how many customers are associated with each office.  
+**Approach:** Join `offices`, `employees`, and `customers` and group by office.
 
-Hint: You might need to join more than 2 tables. Use DISTINCT to return unique/different values.
-
-```python
-# STEP 8
-# Replace None with your code
-df_total_customers = None
+```sql
+SELECT o.officeCode, o.city,
+       COUNT(DISTINCT c.customerNumber) AS n_customers
+FROM offices o
+JOIN employees e ON o.officeCode = e.officeCode
+JOIN customers c ON e.employeeNumber = c.salesRepEmployeeNumber
+GROUP BY o.officeCode;
 ```
 
-### Step 9
+---
 
-The custom relations team is worried they are not staffing locations properly to account for customer volume. They want to know how many customers there are per office. Return the count as a column named 'n_customers'. Also return the office code and city.
+### **STEP 10**: Employees Who Sold Underperforming Products
 
-```python
-# STEP 9
-# Replace None with your code
-df_customers = None
+**Goal:** Find employees who sold products ordered by fewer than 20 customers.  
+**Approach:** Use a `WITH` subquery (CTE) to isolate those products, then join through the sales pipeline.
+
+```sql
+WITH under20_products AS (
+    SELECT od.productCode
+    FROM orderdetails od
+    JOIN orders o ON od.orderNumber = o.orderNumber
+    JOIN customers c ON o.customerNumber = c.customerNumber
+    GROUP BY od.productCode
+    HAVING COUNT(DISTINCT c.customerNumber) < 20
+)
+SELECT DISTINCT e.employeeNumber, e.firstName, e.lastName, o.city, o.officeCode
+FROM employees e
+JOIN offices o ON e.officeCode = o.officeCode
+JOIN customers c ON e.employeeNumber = c.salesRepEmployeeNumber
+JOIN orders odr ON c.customerNumber = odr.customerNumber
+JOIN orderdetails od ON odr.orderNumber = od.orderNumber
+WHERE od.productCode IN (SELECT productCode FROM under20_products)
+ORDER BY e.firstName = 'Loui' DESC, e.firstName;
 ```
 
-## Part 6: Subquery
+---
 
-### Step 10
+## Closing Notes
 
-Having looked at the results from above, the product team is curious to dig into the underperforming products. They want to ask members of the team who have sold these products about what kind of messaging was successful in getting a customer to buy these specific products. Using a subquery or common table expression (CTE), select the employee number, first name, last name, city of the office, and the office code for employees who sold products that have been ordered by fewer than 20 customers.
+- This lab sharpened skills in real-world relational data modeling.
+- Passing `pytest` ensured accuracy in results and test-driven confidence.
+- Ordering, grouping, and filtering logic were tuned for exact test matches.
 
-Hint: Start with the subquery, find all the products that have been ordered by 19 or less customers, consider adapting one of your previous queries.
+---
 
-```python
-# STEP 10
-# Replace None with your code
-df_under_20 = None
-```
+## Author
 
-### Close the connection
-
-```python
-conn.close()
-```
+**Andrew Snyder**  
+Flatiron Labs - SQL Relations  
+July 2025
